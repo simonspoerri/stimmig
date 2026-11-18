@@ -24,4 +24,4 @@ Guidance for coding agents (and people) working in this repository.
   live run and commit the new report, or CI fails.
 - **API changes** in the pipeline: run `npm run gen:api-types` and commit
   `packages/api-types`; CI fails on drift.
-- Before committing: `npm run check` and `(cd services/pipeline && uv run poe check)`.
+- Before committing: `make check` (runs `npm run check` and `(cd services/pipeline && uv run poe check)`).

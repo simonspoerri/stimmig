@@ -1,5 +1,5 @@
 # Postgres for local development. Each service gets its own database;
-# scripts/dev.sh creates them.
+# scripts/create-databases.sh creates them (make setup / make dev).
 name: stimmig
 services:
   postgres:
@@ -7,8 +7,12 @@ services:
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "5432:5432"
+      - "${PG_PORT:-5432}:5432"
     volumes:
       - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 15
 volumes:
   postgres:

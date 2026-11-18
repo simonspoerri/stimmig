@@ -28,15 +28,20 @@ The rules every claim and chart follows: [docs/methodology.md](docs/methodology.
 
 ## Run it locally
 
-Requirements: Node.js 22, Python 3.12+ with [uv](https://docs.astral.sh/uv/),
-and PostgreSQL 16+ (or Docker for `compose.yaml`).
+Requirements: Node.js 22 (`.nvmrc`; with [nvm](https://github.com/nvm-sh/nvm) `make` installs and uses it), [uv](https://docs.astral.sh/uv/)
+and Docker (or your own PostgreSQL 16+).
 
 ```sh
-docker compose up -d postgres      # or any Postgres on localhost:5432 (user postgres, trust)
-npm ci
-(cd services/pipeline && uv sync)
-scripts/dev.sh                     # starts identity, pipeline, admin and web
+make setup     # installs uv and dependencies, starts Postgres in Docker, creates the databases
+make install   # only install tools and dependencies (also after pulling)
+make dev       # starts identity, pipeline, admin and web; Ctrl-C stops all
+make logs      # in a second terminal: follow all logs
+make           # lists all targets (check, evals, db-reset, ...)
 ```
+
+If port 5432 is already taken, pick another one: `make setup dev PG_PORT=55432`,
+or put `PG_PORT=55432` in `.env`. To use your own Postgres instead of Docker:
+`make dev NO_DOCKER=1 PGURL=postgresql://postgres@localhost:5432`.
 
 | URL | |
 |---|---|
@@ -45,7 +50,7 @@ scripts/dev.sh                     # starts identity, pipeline, admin and web
 | http://localhost:4000 | identity provider (`/.well-known/openid-configuration`) |
 | http://localhost:8000/docs | pipeline API |
 
-`scripts/dev.sh` seeds three local users, one per role:
+`make dev` seeds three local users, one per role:
 `admin@stimmig.local`, `reviewer@stimmig.local`, `visualizer@stimmig.local`.
 Login codes are printed to `.local/logs/identity.log` instead of being mailed.
 Without `ANTHROPIC_API_KEY` the pipeline replays recorded model answers, which
@@ -58,9 +63,8 @@ database (needs Playwright installed on the machine).
 ## Checks
 
 ```sh
-npm run check                                  # lint, typecheck, tests of the JS workspaces
-(cd services/pipeline && uv run poe check)     # ruff, mypy, pytest
-(cd services/pipeline && uv run stimmig-evals) # evals against recorded model answers, no API key
+make check     # npm run check (lint, typecheck, tests) and the pipeline's ruff, mypy, pytest
+make evals     # evals against recorded model answers, no API key
 ```
 
 ## License
