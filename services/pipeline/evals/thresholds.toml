@@ -1,0 +1,14 @@
+# Checked against the worst of all runs. Raise them as the datasets grow;
+# lowering one needs a reason in the commit message.
+
+[dev]
+min_recall = 0.85
+min_precision = 0.75
+min_class_accuracy = 0.85
+max_false_fact = 0
+
+[test]
+min_recall = 0.85
+min_precision = 0.75
+min_class_accuracy = 0.85
+max_false_fact = 0

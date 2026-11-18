@@ -1,0 +1,83 @@
+---
+import { t } from '../lib/i18n.ts';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+const { title, description = t.siteDescription } = Astro.props;
+const fullTitle = title ? `${title} · Stimmig` : 'Stimmig';
+Astro.response.headers.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=600');
+---
+
+<!doctype html>
+<html lang="de-CH">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{fullTitle}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="/">Stimmig</a>
+        <nav>
+          <a href="/">{t.navVotes}</a>
+          <a href="/methodik/">{t.navMethod}</a>
+          <a href="https://github.com/simonspoerri/stimmig">{t.navCode}</a>
+        </nav>
+      </div>
+    </header>
+    <main class="wrap">
+      <slot />
+    </main>
+    <footer class="wrap site-footer">
+      <p>{t.footer} <a href="/methodik/">{t.footerMethod}</a></p>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #fbfaf8;
+    --surface: #ffffff;
+    --text: #1d232b;
+    --muted: #5b6573;
+    --line: #e3e0da;
+    --accent: #1f3a5f;
+    --quote: #f2efe9;
+    color-scheme: light dark;
+    font-family: 'Source Sans 3', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171b;
+      --surface: #1b1f24;
+      --text: #e6e3de;
+      --muted: #9aa3ae;
+      --line: #2d333b;
+      --accent: #9db8dc;
+      --quote: #222831;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.55; font-size: 17px; }
+  a { color: var(--accent); }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+  .site-header { border-bottom: 1px solid var(--line); background: var(--surface); }
+  .site-header .wrap { display: flex; align-items: center; justify-content: space-between; min-height: 56px; gap: 16px; }
+  .brand { font-weight: 700; font-size: 1.2rem; letter-spacing: 0.01em; text-decoration: none; color: var(--text); }
+  nav { display: flex; gap: 18px; }
+  nav a { text-decoration: none; color: var(--muted); }
+  nav a:hover { color: var(--text); }
+  main { padding: 32px 16px 48px; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 12px; overflow-wrap: anywhere; }
+  h2 { font-size: 1.35rem; margin: 40px 0 12px; }
+  .lead { font-size: 1.15rem; color: var(--muted); max-width: 640px; }
+  .muted { color: var(--muted); }
+  .site-footer { border-top: 1px solid var(--line); padding: 24px 16px 40px; color: var(--muted); font-size: 0.9rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+</style>

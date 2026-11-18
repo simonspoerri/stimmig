@@ -1,0 +1,73 @@
+[project]
+name = "stimmig-pipeline"
+version = "0.1.0"
+description = "Stimmig pipeline: API, claim extraction and evals"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "alembic>=1.20.1",
+    "anthropic>=2.10.0",
+    "fastapi>=0.164.0",
+    "httpx>=0.28.1",
+    "psycopg[binary]>=3.3.9",
+    "pydantic>=2.14.3",
+    "pydantic-settings>=2.16.3",
+    "pyjwt[crypto]>=2.15.1",
+    "sqlalchemy>=2",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+stimmig-pipeline = "stimmig_pipeline.cli:main"
+stimmig-evals = "stimmig_pipeline.evals.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stimmig_pipeline"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "poethepoet>=0.49.0",
+    "pytest>=9.2.0",
+    "ruff>=0.17.5",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "PL", "ASYNC"]
+ignore = ["PLR0913", "PLR2004", "S101", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "PLR0915"]
+"src/stimmig_pipeline/migrations/**" = ["E501"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = "src"
+files = ["src", "tests"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["alembic.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.poe.tasks]
+lint = "ruff check ."
+format = "ruff format ."
+typecheck = "mypy"
+test = "pytest"
+check = ["lint", "typecheck", "test"]
+serve = "stimmig-pipeline serve --reload"

@@ -1,0 +1,118 @@
+---
+import type { ClaimOut, VisualizationOut } from '@stimmig/api-types';
+import VizEditor from '../../components/VizEditor.astro';
+import Admin from '../../layouts/Admin.astro';
+import { FormError, handlePost, json, notice, optional, text } from '../../lib/forms.ts';
+import { formatDateTime, SIDE_LABEL, STATUS_LABEL } from '../../lib/labels.ts';
+
+const { session, pipeline } = Astro.locals;
+const can = (p: string) => session!.permissions.includes(p);
+const id = Astro.params.id!;
+const here = `/visualizations/${id}`;
+
+const { redirect, result } = await handlePost(Astro, async (form) => {
+  const action = text(form, 'action');
+  if (action === 'save') {
+    await pipeline.patch(`/api/visualizations/${id}`, {
+      title: text(form, 'title'),
+      description: text(form, 'description'),
+      spec: json(form, 'spec', 'Die Spezifikation'),
+      data_sources: json(form, 'data_sources', 'Die Datenquellen'),
+    });
+    return `${here}?ok=saved`;
+  }
+  if (action === 'submit') {
+    await pipeline.post(`/api/visualizations/${id}/submit`);
+    return `${here}?ok=submitted`;
+  }
+  if (action === 'review') {
+    await pipeline.post(`/api/visualizations/${id}/review`, {
+      decision: text(form, 'decision'),
+      note: optional(form, 'note'),
+    });
+    return `${here}?ok=viz-reviewed`;
+  }
+  throw new FormError('Unbekannte Aktion.');
+});
+if (redirect) return redirect;
+
+const viz = await pipeline.get<VisualizationOut>(`/api/visualizations/${id}`);
+const claim = await pipeline.get<ClaimOut>(`/api/claims/${viz.claim_id}`);
+const editable = can('visualizations:write') && (viz.status === 'draft' || viz.status === 'rejected');
+const editedByMe = viz.edited_by.includes(session!.email);
+const reviewable = can('visualizations:review') && viz.status === 'in_review';
+---
+
+<Admin title={viz.title} notice={notice(Astro)}>
+  <p class="muted"><a href={`/votes/${claim.vote_id}#claim-${claim.id}`}>Zurück zur Vorlage</a></p>
+  <div class="head">
+    <h1>{viz.title}</h1>
+    <span class={`badge ${viz.status}`}>{STATUS_LABEL[viz.status]}</span>
+  </div>
+  <p class="muted">
+    Erstellt von {viz.created_by}
+    {viz.edited_by.length > 1 && `, bearbeitet von ${viz.edited_by.slice(1).join(', ')}`}
+    {viz.reviewed_by && ` · geprüft von ${viz.reviewed_by}, ${formatDateTime(viz.reviewed_at!)}`}
+  </p>
+  <p class="muted">{SIDE_LABEL[claim.side]}</p>
+  <blockquote>{claim.quote}</blockquote>
+
+  {viz.status === 'rejected' && viz.review_note && <p class="error">Zurückgewiesen: {viz.review_note}</p>}
+  {result.error && <p class="error" role="alert">{result.error}</p>}
+
+  {
+    reviewable && (
+      <form method="post" class="card review stack">
+        <input type="hidden" name="action" value="review" />
+        <h3>Prüfung</h3>
+        {editedByMe ? (
+          <p class="muted">Sie haben diese Grafik bearbeitet. Eine andere Person muss sie prüfen (Vier-Augen-Prinzip).</p>
+        ) : (
+          <>
+            <p class="muted">
+              Stimmen Daten, Quelle und Zeitraum? Ist die Darstellung neutral (Achsen, Farben, Ausschnitt)?
+            </p>
+            <div>
+              <label for="note">Bemerkung (nötig beim Zurückweisen)</label>
+              <input id="note" name="note" />
+            </div>
+            <div class="actions">
+              <button type="submit" name="decision" value="approve">Freigeben</button>
+              <button class="danger" type="submit" name="decision" value="reject">Zurückweisen</button>
+            </div>
+          </>
+        )}
+      </form>
+    )
+  }
+
+  <form method="post" class="form">
+    <input type="hidden" name="action" value="save" />
+    <VizEditor
+      title={viz.title}
+      description={viz.description}
+      spec={viz.spec}
+      dataSources={viz.data_sources}
+      submitLabel="Speichern"
+      readonly={!editable}
+    />
+  </form>
+
+  {
+    editable && viz.status === 'draft' && (
+      <form method="post" class="actions submit">
+        <input type="hidden" name="action" value="submit" />
+        <button class="secondary" type="submit">Zur Prüfung einreichen</button>
+        <span class="muted">Danach ist die Grafik gesperrt, bis sie geprüft ist.</span>
+      </form>
+    )
+  }
+</Admin>
+
+<style>
+  .head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .head h1 { margin: 0; }
+  blockquote { margin: 8px 0 20px; }
+  .review { margin-bottom: 20px; }
+  .submit { margin-top: 16px; }
+</style>

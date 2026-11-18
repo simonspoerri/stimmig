@@ -1,0 +1,33 @@
+{
+  "name": "@stimmig/identity",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "users": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@koa/router": "^15.7.1",
+    "jose": "^6.2.17",
+    "koa": "^3.3.0",
+    "koa-body": "^8.0.1",
+    "nodemailer": "^10.6.0",
+    "oidc-provider": "^9.15.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/koa": "^3.0.3",
+    "@types/koa__router": "^12.0.5",
+    "@types/node": "^26.6.6",
+    "@types/nodemailer": "^8.0.2",
+    "@types/oidc-provider": "^9.13.1",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}

@@ -1,0 +1,1 @@
+"""Stimmig pipeline service."""

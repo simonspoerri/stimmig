@@ -1,0 +1,330 @@
+---
+import type { AuditEventOut, ClaimOut, ExtractionRunOut, VoteDetail } from '@stimmig/api-types';
+import Admin from '../../layouts/Admin.astro';
+import { config } from '../../lib/config.ts';
+import { FormError, handlePost, notice, optional, text } from '../../lib/forms.ts';
+import {
+  CLASS_LABEL,
+  DOCUMENT_KIND_LABEL,
+  formatDate,
+  formatDateTime,
+  SIDE_LABEL,
+  STATUS_LABEL,
+  VOTE_KIND_LABEL,
+} from '../../lib/labels.ts';
+
+const { session, pipeline } = Astro.locals;
+const can = (p: string) => session!.permissions.includes(p);
+const id = Astro.params.id!;
+const here = `/votes/${id}`;
+
+const { redirect, result } = await handlePost(Astro, async (form) => {
+  const action = text(form, 'action');
+  if (action === 'add-document') {
+    await pipeline.post(`/api/votes/${id}/documents`, {
+      kind: text(form, 'kind'),
+      side: text(form, 'side'),
+      title: text(form, 'title'),
+      url: text(form, 'url'),
+      locator: optional(form, 'locator'),
+      text: text(form, 'text'),
+    });
+    return `${here}?ok=document-added`;
+  }
+  if (action === 'extract') {
+    await pipeline.post<ExtractionRunOut>(`/api/documents/${text(form, 'document')}/extract`);
+    return `${here}?ok=extracted#claims`;
+  }
+  if (action === 'review-claim') {
+    const claim = text(form, 'claim');
+    await pipeline.post(`/api/claims/${claim}/review`, {
+      status: text(form, 'decision'),
+      class: text(form, 'class'),
+      class_rationale: text(form, 'class_rationale'),
+      estimate_by: optional(form, 'estimate_by'),
+      not_visualized_reason: optional(form, 'not_visualized_reason'),
+    });
+    return `${here}?ok=claim-reviewed#claim-${claim}`;
+  }
+  if (action === 'publish' || action === 'unpublish') {
+    await pipeline.post(`/api/votes/${id}/${action}`);
+    return `${here}?ok=${action}ed`;
+  }
+  throw new FormError('Unbekannte Aktion.');
+});
+if (redirect) return redirect;
+
+const vote = await pipeline.get<VoteDetail>(`/api/votes/${id}`);
+const audit = await pipeline.get<AuditEventOut[]>(`/api/votes/${id}/audit`);
+const documents = new Map(vote.documents.map((d) => [d.id, d]));
+const groups: { status: ClaimOut['status']; title: string }[] = [
+  { status: 'draft', title: 'Zu prüfen' },
+  { status: 'approved', title: 'Freigegeben' },
+  { status: 'rejected', title: 'Verworfen' },
+];
+const counts = vote.claim_counts ?? {};
+---
+
+<Admin title={vote.title} notice={notice(Astro)}>
+  <p class="muted"><a href="/">Vorlagen</a> / {formatDate(vote.date)}</p>
+  <div class="head">
+    <div>
+      <h1>{vote.title}</h1>
+      <p class="muted">
+        {VOTE_KIND_LABEL[vote.kind]} · <a href={vote.official_url}>Offizielle Seite</a> ·{' '}
+        <span class={`badge ${vote.status}`}>{STATUS_LABEL[vote.status]}</span>
+        {
+          vote.status === 'published' && (
+            <>
+              {' '}· <a href={`${config.publicSiteUrl}/vorlagen/${vote.id}/`}>Öffentliche Seite</a>
+            </>
+          )
+        }
+      </p>
+    </div>
+    {
+      can('votes:publish') && (
+        <form method="post">
+          <input type="hidden" name="action" value={vote.status === 'published' ? 'unpublish' : 'publish'} />
+          <button class={vote.status === 'published' ? 'secondary' : ''} type="submit">
+            {vote.status === 'published' ? 'Publikation zurückziehen' : 'Publizieren'}
+          </button>
+        </form>
+      )
+    }
+  </div>
+
+  {
+    result.error && (
+      <div class="error" role="alert">
+        {result.error}
+        {result.problems && result.problems.length > 0 && (
+          <ul>
+            {result.problems.map((p) => (
+              <li>{p}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
+
+  <h2>Quellen</h2>
+  {vote.documents.length === 0 && <p class="card muted">Noch keine Quelldokumente.</p>}
+  <div class="stack">
+    {
+      vote.documents.map((doc) => (
+        <div class="card doc">
+          <div>
+            <h3>
+              <a href={doc.url}>{doc.title}</a>
+            </h3>
+            <p class="muted">
+              {DOCUMENT_KIND_LABEL[doc.kind]} · {SIDE_LABEL[doc.side]}
+              {doc.locator && ` · ${doc.locator}`} · erfasst von {doc.created_by}
+            </p>
+          </div>
+          {can('extraction:run') && (
+            <form method="post">
+              <input type="hidden" name="action" value="extract" />
+              <input type="hidden" name="document" value={doc.id} />
+              <button class="secondary" type="submit">Aussagen extrahieren</button>
+            </form>
+          )}
+        </div>
+      ))
+    }
+  </div>
+
+  {
+    can('documents:write') && (
+      <details class="card add" open={vote.documents.length === 0}>
+        <summary>Quelldokument hinzufügen</summary>
+        <form method="post" class="stack">
+          <input type="hidden" name="action" value="add-document" />
+          <div class="grid">
+            <div>
+              <label for="kind">Art</label>
+              <select id="kind" name="kind">
+                {Object.entries(DOCUMENT_KIND_LABEL).map(([value, label]) => (
+                  <option value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label for="side">Seite</label>
+              <select id="side" name="side">
+                {Object.entries(SIDE_LABEL).map(([value, label]) => (
+                  <option value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label for="locator">Fundstelle</label>
+              <input id="locator" name="locator" placeholder="S. 12" />
+            </div>
+          </div>
+          <div>
+            <label for="title">Titel</label>
+            <input id="title" name="title" required placeholder="Erläuterungen des Bundesrates, Argumente des Komitees" />
+          </div>
+          <div>
+            <label for="url">Link zur Quelle</label>
+            <input id="url" name="url" type="url" required />
+          </div>
+          <div>
+            <label for="text">Text (aus der Quelle kopiert, unverändert)</label>
+            <textarea id="text" name="text" class="prose" required minlength="20" rows="8"></textarea>
+          </div>
+          <div class="actions">
+            <button type="submit">Hinzufügen</button>
+          </div>
+        </form>
+      </details>
+    )
+  }
+
+  <h2 id="claims">Aussagen</h2>
+  {vote.claims.length === 0 && <p class="card muted">Noch keine Aussagen. Starten Sie die Extraktion bei einer Quelle.</p>}
+  {
+    groups.map((group) =>
+      (counts[group.status] ?? 0) > 0 ? (
+        <section class="group">
+          <h3 class="group-title">
+            {group.title} <span class="muted">({counts[group.status]})</span>
+          </h3>
+          <div class="stack">
+            {vote.claims
+              .filter((c) => c.status === group.status)
+              .map((claim) => {
+                const doc = documents.get(claim.document_id);
+                const corrected = claim.proposed_class && claim.proposed_class !== claim.class;
+                const canChart = claim.status === 'approved' && claim.class === 'fact';
+                return (
+                  <article class="card claim" id={`claim-${claim.id}`}>
+                    <div class="claim-meta">
+                      <span class="badge">{CLASS_LABEL[claim.class]}</span>
+                      {corrected && <span class="muted">Modell: {CLASS_LABEL[claim.proposed_class!]}</span>}
+                      <span class="muted">
+                        {SIDE_LABEL[claim.side]} · {doc?.title}
+                      </span>
+                    </div>
+                    <blockquote>{claim.quote}</blockquote>
+                    <p class="muted small">{claim.class_rationale}</p>
+                    {claim.estimate_by && <p class="small">Schätzung von: {claim.estimate_by}</p>}
+                    {claim.not_visualized_reason && (
+                      <p class="small">Nicht visualisiert: {claim.not_visualized_reason}</p>
+                    )}
+                    {claim.reviewed_by && (
+                      <p class="muted small">
+                        Geprüft von {claim.reviewed_by}, {formatDateTime(claim.reviewed_at!)}
+                      </p>
+                    )}
+
+                    {canChart && (
+                      <div class="charts">
+                        {(claim.visualizations ?? []).map((viz) => (
+                          <a class="chart-link" href={`/visualizations/${viz.id}`}>
+                            <span class={`badge ${viz.status}`}>{STATUS_LABEL[viz.status]}</span> {viz.title}
+                          </a>
+                        ))}
+                        {can('visualizations:write') && (
+                          <a class="chart-link new" href={`/claims/${claim.id}/visualize?vote=${vote.id}`}>
+                            + Grafik erstellen
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {can('claims:review') && (
+                      <details open={claim.status === 'draft'}>
+                        <summary>{claim.status === 'draft' ? 'Prüfen' : 'Erneut prüfen'}</summary>
+                        <form method="post" class="stack review">
+                          <input type="hidden" name="action" value="review-claim" />
+                          <input type="hidden" name="claim" value={claim.id} />
+                          <div class="grid">
+                            <div>
+                              <label>Klasse</label>
+                              <select name="class">
+                                {Object.entries(CLASS_LABEL).map(([value, label]) => (
+                                  <option value={value} selected={value === claim.class}>
+                                    {label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label>Schätzung von (nur Prognosen)</label>
+                              <input name="estimate_by" value={claim.estimate_by ?? ''} />
+                            </div>
+                          </div>
+                          <div>
+                            <label>Begründung der Klasse</label>
+                            <input name="class_rationale" value={claim.class_rationale} required minlength="10" />
+                          </div>
+                          <div>
+                            <label>Grund, falls ein Faktum nicht visualisiert werden kann</label>
+                            <input name="not_visualized_reason" value={claim.not_visualized_reason ?? ''} />
+                          </div>
+                          <div class="actions">
+                            <button type="submit" name="decision" value="approved">
+                              Freigeben
+                            </button>
+                            <button class="danger" type="submit" name="decision" value="rejected">
+                              Verwerfen
+                            </button>
+                          </div>
+                        </form>
+                      </details>
+                    )}
+                  </article>
+                );
+              })}
+          </div>
+        </section>
+      ) : null,
+    )
+  }
+
+  <h2>Verlauf</h2>
+  <details class="card">
+    <summary>{audit.length} Einträge</summary>
+    <div class="table-scroll">
+      <table class="audit">
+        <tbody>
+          {
+            audit.map((event) => (
+              <tr>
+                <td class="muted">{formatDateTime(event.at)}</td>
+                <td>{event.actor}</td>
+                <td>
+                  <code>{event.action}</code>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </details>
+</Admin>
+
+<style>
+  .head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .doc { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .doc h3 { margin: 0; }
+  .doc p { margin: 2px 0 0; font-size: 0.9rem; }
+  .add { margin-top: 12px; }
+  .add form { margin-top: 12px; }
+  .group + .group { margin-top: 28px; }
+  .group-title { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .claim-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.85rem; }
+  .claim blockquote { margin-bottom: 6px; }
+  .small { font-size: 0.85rem; margin: 4px 0; }
+  .charts { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .chart-link { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; text-decoration: none; font-size: 0.9rem; }
+  .chart-link.new { border-style: dashed; }
+  .review { margin-top: 10px; }
+  .audit { border: 0; }
+  .audit td { padding: 6px 8px; font-size: 0.85rem; }
+</style>

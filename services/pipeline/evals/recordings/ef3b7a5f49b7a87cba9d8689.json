@@ -1,0 +1,31 @@
+{
+  "key": "ef3b7a5f49b7a87cba9d8689",
+  "model": "claude-sonnet-5-5",
+  "tool": "report_claims",
+  "provenance": "Hand-written fixture for the synthetic dataset, not a model run. Tests the harness only.",
+  "response": {
+    "claims": [
+      {
+        "quote": "Die Zahl der Musterbetriebe ist seit 2010 um 40 Prozent gestiegen.",
+        "class": "fact",
+        "rationale": "Measurable past or present state of affairs."
+      },
+      {
+        "quote": "Heute arbeiten rund 12 000 Personen in der Branche.",
+        "class": "fact",
+        "rationale": "Measurable past or present state of affairs."
+      },
+      {
+        "quote": "Mit der Initiative würden die Kosten für die Kantone bis 2035 auf 2 Milliarden Franken anwachsen",
+        "class": "forecast",
+        "rationale": "Statement about future effects.",
+        "estimate_by": "committee"
+      },
+      {
+        "quote": "Das ist schlicht unfair gegenüber den Steuerzahlenden.",
+        "class": "opinion",
+        "rationale": "Value judgement without a measurable core."
+      }
+    ]
+  }
+}

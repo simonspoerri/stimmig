@@ -1,0 +1,26 @@
+{
+  "key": "cd746630d403ef542d6b0ee5",
+  "model": "claude-sonnet-5-5",
+  "tool": "report_claims",
+  "provenance": "Hand-written fixture for the synthetic dataset, not a model run. Tests the harness only.",
+  "response": {
+    "claims": [
+      {
+        "quote": "Seit 2015 sind die Löhne in der Musterbranche real um 3 Prozent gesunken.",
+        "class": "fact",
+        "rationale": "Measurable past or present state of affairs."
+      },
+      {
+        "quote": "Die Initiative würde 5000 Stellen sichern.",
+        "class": "forecast",
+        "rationale": "Statement about future effects.",
+        "estimate_by": "committee"
+      },
+      {
+        "quote": "Es ist höchste Zeit zu handeln.",
+        "class": "opinion",
+        "rationale": "Value judgement without a measurable core."
+      }
+    ]
+  }
+}

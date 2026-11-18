@@ -1,0 +1,108 @@
+---
+import type { VoteSummary } from '@stimmig/api-types';
+import Admin from '../layouts/Admin.astro';
+import { handlePost, notice, text } from '../lib/forms.ts';
+import { formatDate, STATUS_LABEL, VOTE_KIND_LABEL } from '../lib/labels.ts';
+
+const { session, pipeline } = Astro.locals;
+const can = (p: string) => session!.permissions.includes(p);
+
+const { redirect, result } = await handlePost(Astro, async (form) => {
+  const vote = await pipeline.post<VoteSummary>('/api/votes', {
+    id: text(form, 'id'),
+    date: text(form, 'date'),
+    title: text(form, 'title'),
+    kind: text(form, 'kind'),
+    official_url: text(form, 'official_url'),
+  });
+  return `/votes/${vote.id}?ok=vote-created`;
+});
+if (redirect) return redirect;
+
+const votes = await pipeline.get<VoteSummary[]>('/api/votes');
+---
+
+<Admin title="Vorlagen" notice={notice(Astro)}>
+  <h1>Vorlagen</h1>
+  <p class="muted">Eidgenössische Vorlagen mit ihren Quellen, Aussagen und Grafiken.</p>
+
+  {
+    votes.length === 0 ? (
+      <p class="card muted">Noch keine Vorlage erfasst.</p>
+    ) : (
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Abstimmung</th>
+              <th>Vorlage</th>
+              <th>Status</th>
+              <th>Aussagen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {votes.map((vote) => (
+              <tr>
+                <td>{formatDate(vote.date)}</td>
+                <td>
+                  <a href={`/votes/${vote.id}`}>{vote.title}</a>
+                  <div class="muted">{VOTE_KIND_LABEL[vote.kind]}</div>
+                </td>
+                <td>
+                  <span class={`badge ${vote.status}`}>{STATUS_LABEL[vote.status]}</span>
+                </td>
+                <td>
+                  {Object.entries(vote.claim_counts ?? {}).length === 0
+                    ? '–'
+                    : Object.entries(vote.claim_counts ?? {})
+                        .map(([status, n]) => `${n} ${STATUS_LABEL[status]?.toLowerCase()}`)
+                        .join(', ')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  {
+    can('votes:write') && (
+      <>
+        <h2>Neue Vorlage</h2>
+        <form method="post" class="card stack">
+          {result.error && <p class="error">{result.error}</p>}
+          <div class="grid">
+            <div>
+              <label for="date">Abstimmungsdatum</label>
+              <input id="date" name="date" type="date" required />
+            </div>
+            <div>
+              <label for="id">Kennung</label>
+              <input id="id" name="id" required pattern="\d{4}-\d{2}-\d{2}-[a-z0-9-]+" placeholder="2027-02-28-kurzname" />
+            </div>
+            <div>
+              <label for="kind">Art</label>
+              <select id="kind" name="kind">
+                {Object.entries(VOTE_KIND_LABEL).map(([value, label]) => (
+                  <option value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label for="title">Titel</label>
+            <input id="title" name="title" required minlength="3" />
+          </div>
+          <div>
+            <label for="official_url">Offizielle Seite (admin.ch)</label>
+            <input id="official_url" name="official_url" type="url" required placeholder="https://www.admin.ch/…" />
+          </div>
+          <div class="actions">
+            <button type="submit">Vorlage erfassen</button>
+          </div>
+        </form>
+      </>
+    )
+  }
+</Admin>

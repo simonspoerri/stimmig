@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.astro/
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+test-results/
+.local/
+.env
+.env.*
+!.env.example
+.DS_Store
+services/pipeline/evals/reports/*.local.*

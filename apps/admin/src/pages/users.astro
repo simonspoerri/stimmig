@@ -1,0 +1,126 @@
+---
+import Admin from '../layouts/Admin.astro';
+import { identityClient } from '../lib/api.ts';
+import { FormError, handlePost, notice, text } from '../lib/forms.ts';
+import { formatDateTime, ROLE_DESCRIPTION, ROLE_LABEL } from '../lib/labels.ts';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  roles: string[];
+  disabled: boolean;
+  last_login_at: string | null;
+}
+
+const session = Astro.locals.session!;
+if (!session.roles.includes('admin')) return Astro.redirect('/');
+
+const identity = await identityClient(session);
+const roles = Object.keys(ROLE_LABEL);
+const chosenRoles = (form: FormData) => roles.filter((r) => form.get(`role-${r}`) === 'on');
+
+const { redirect, result } = await handlePost(Astro, async (form) => {
+  const action = text(form, 'action');
+  if (action === 'create') {
+    await identity.post('/manage/users', { email: text(form, 'email'), name: text(form, 'name'), roles: chosenRoles(form) });
+    return '/users?ok=user-created';
+  }
+  if (action === 'update') {
+    await identity.patch(`/manage/users/${text(form, 'user')}`, {
+      roles: chosenRoles(form),
+      disabled: form.get('disabled') === 'on',
+    });
+    return '/users?ok=user-updated';
+  }
+  throw new FormError('Unbekannte Aktion.');
+});
+if (redirect) return redirect;
+
+const users = await identity.get<User[]>('/manage/users');
+---
+
+<Admin title="Benutzer" notice={notice(Astro)}>
+  <h1>Benutzer</h1>
+  <p class="muted">Anmeldung per Code an die E-Mail-Adresse. Rollen wirken ab dem nächsten Token, spätestens nach 10 Minuten.</p>
+  <dl class="roles">
+    {
+      roles.map((r) => (
+        <div>
+          <dt>{ROLE_LABEL[r]}</dt>
+          <dd class="muted">{ROLE_DESCRIPTION[r]}</dd>
+        </div>
+      ))
+    }
+  </dl>
+  {result.error && <p class="error" role="alert">{result.error}</p>}
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Person</th><th>Rollen</th><th>Gesperrt</th><th>Letzte Anmeldung</th><th></th></tr>
+      </thead>
+      <tbody>
+        {
+          users.map((user) => (
+            <tr>
+              <td>
+                {user.name}
+                <div class="muted">{user.email}</div>
+              </td>
+              <td colspan="3">
+                <form method="post" class="row" id={`user-${user.id}`}>
+                  <input type="hidden" name="action" value="update" />
+                  <input type="hidden" name="user" value={user.id} />
+                  <span class="checks">
+                    {roles.map((r) => (
+                      <label class="check">
+                        <input type="checkbox" name={`role-${r}`} checked={user.roles.includes(r)} /> {ROLE_LABEL[r]}
+                      </label>
+                    ))}
+                  </span>
+                  <label class="check">
+                    <input type="checkbox" name="disabled" checked={user.disabled} /> gesperrt
+                  </label>
+                  <span class="muted">{user.last_login_at ? formatDateTime(user.last_login_at) : 'nie'}</span>
+                </form>
+              </td>
+              <td>
+                <button class="secondary" type="submit" form={`user-${user.id}`}>Speichern</button>
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Neue Person</h2>
+  <form method="post" class="card stack">
+    <input type="hidden" name="action" value="create" />
+    <div class="grid">
+      <div><label for="name">Name</label><input id="name" name="name" required /></div>
+      <div><label for="email">E-Mail</label><input id="email" name="email" type="email" required /></div>
+    </div>
+    <div class="checks">
+      {
+        roles.map((r) => (
+          <label class="check">
+            <input type="checkbox" name={`role-${r}`} /> {ROLE_LABEL[r]}
+          </label>
+        ))
+      }
+    </div>
+    <div class="actions"><button type="submit">Erfassen</button></div>
+  </form>
+</Admin>
+
+<style>
+  .roles { display: grid; gap: 8px 24px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 16px 0 24px; }
+  .roles dt { font-weight: 600; }
+  .roles dd { margin: 0; font-size: 0.9rem; }
+  .row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+  .checks { display: flex; gap: 14px; flex-wrap: wrap; }
+  .check { display: inline-flex; gap: 6px; align-items: center; font-weight: 500; margin: 0; white-space: nowrap; }
+  .check input { width: auto; }
+</style>

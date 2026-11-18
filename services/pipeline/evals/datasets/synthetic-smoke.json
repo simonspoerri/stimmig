@@ -1,0 +1,38 @@
+{
+  "name": "synthetic-smoke",
+  "description": "Synthetic text about an invented vote. Checks that the harness computes what it should. No real content.",
+  "synthetic": true,
+  "items": [
+    {
+      "id": "example-opponents",
+      "split": "dev",
+      "input": {
+        "vote_id": "2099-01-01-example",
+        "document_title": "Synthetic example, opponents' arguments",
+        "side": "opponents",
+        "text": "Die Zahl der Musterbetriebe ist seit 2010 um 40 Prozent gestiegen. Heute arbeiten rund 12 000 Personen in der Branche. Mit der Initiative würden die Kosten für die Kantone bis 2035 auf 2 Milliarden Franken anwachsen, schätzt das Komitee. Das ist schlicht unfair gegenüber den Steuerzahlenden."
+      },
+      "expected": [
+        { "quote": "Die Zahl der Musterbetriebe ist seit 2010 um 40 Prozent gestiegen.", "class": "fact" },
+        { "quote": "Heute arbeiten rund 12 000 Personen in der Branche.", "class": "fact" },
+        { "quote": "Mit der Initiative würden die Kosten für die Kantone bis 2035 auf 2 Milliarden Franken anwachsen", "class": "forecast" },
+        { "quote": "Das ist schlicht unfair gegenüber den Steuerzahlenden.", "class": "opinion" }
+      ]
+    },
+    {
+      "id": "example-proponents",
+      "split": "test",
+      "input": {
+        "vote_id": "2099-01-01-example",
+        "document_title": "Synthetic example, proponents' arguments",
+        "side": "proponents",
+        "text": "Seit 2015 sind die Löhne in der Musterbranche real um 3 Prozent gesunken. Die Initiative würde 5000 Stellen sichern. Es ist höchste Zeit zu handeln."
+      },
+      "expected": [
+        { "quote": "Seit 2015 sind die Löhne in der Musterbranche real um 3 Prozent gesunken.", "class": "fact" },
+        { "quote": "Die Initiative würde 5000 Stellen sichern.", "class": "forecast" },
+        { "quote": "Es ist höchste Zeit zu handeln.", "class": "opinion" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@stimmig/api-types",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript types generated from the pipeline's OpenAPI schema. Do not edit src/pipeline.ts by hand.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "gen": "cd ../../services/pipeline && uv run stimmig-pipeline openapi --out ../../packages/api-types/openapi.json && cd ../../packages/api-types && openapi-typescript openapi.json -o src/pipeline.ts",
+    "check:drift": "npm run gen && git diff --exit-code -- openapi.json src/pipeline.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0"
+  }
+}

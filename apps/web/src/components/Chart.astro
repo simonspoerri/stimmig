@@ -1,0 +1,72 @@
+---
+import type { PublicFact } from '@stimmig/api-types';
+import { formatDate, t } from '../lib/i18n.ts';
+
+type Visualization = PublicFact['visualizations'][number];
+interface Props {
+  viz: Visualization;
+}
+const { viz } = Astro.props;
+---
+
+<figure>
+  <figcaption>
+    <strong>{viz.title}</strong>
+    <span>{viz.description}</span>
+  </figcaption>
+  <div class="chart" data-vega-spec={JSON.stringify(viz.spec)}></div>
+  <p class="sources">
+    {t.source}{' '}
+    {
+      viz.data_sources.map((s, i) => (
+        <>
+          {i > 0 && '; '}
+          <a href={s.url}>
+            {s.publisher}, {s.title}
+          </a>
+          {s.dataset_id && ` (${s.dataset_id})`}, {t.accessedOn} {formatDate(s.accessed_at)}
+        </>
+      ))
+    }
+  </p>
+</figure>
+
+<script>
+  import embed from 'vega-embed';
+  import { t } from '../lib/i18n.ts';
+
+  // Neutral palette only - no party or yes/no colours (docs/methodology.md, section 5).
+  // Axis colours follow the page theme, so charts stay readable in dark mode.
+  const css = getComputedStyle(document.documentElement);
+  const text = css.getPropertyValue('--text').trim();
+  const muted = css.getPropertyValue('--muted').trim();
+  const line = css.getPropertyValue('--line').trim();
+
+  for (const el of document.querySelectorAll<HTMLElement>('[data-vega-spec]')) {
+    const spec = JSON.parse(el.dataset.vegaSpec ?? '{}');
+    const config = {
+      background: null,
+      range: { category: ['#4c6a8a', '#8a9bb0', '#2f4560', '#b7c2cf'] },
+      mark: { color: '#4c6a8a' },
+      axis: { labelColor: muted, titleColor: text, gridColor: line, domainColor: line, tickColor: line, gridOpacity: 0.6 },
+      legend: { labelColor: muted, titleColor: text },
+      view: { stroke: line },
+      ...spec.config,
+    };
+    embed(el, { width: 'container', ...spec, config }, {
+      actions: { export: true, source: false, compiled: false, editor: false },
+      renderer: 'svg',
+    }).catch((error: unknown) => {
+      el.textContent = t.chartError;
+      console.error(error);
+    });
+  }
+</script>
+
+<style>
+  figure { margin: 0; }
+  figcaption { display: flex; flex-direction: column; margin-bottom: 8px; }
+  figcaption span { color: var(--muted); font-size: 0.95rem; }
+  .chart { width: 100%; min-height: 240px; }
+  .sources { font-size: 0.85rem; color: var(--muted); }
+</style>

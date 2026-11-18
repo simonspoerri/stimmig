@@ -1,0 +1,28 @@
+{
+  "name": "stimmig",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "services/identity",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "gen:api-types": "npm run gen -w @stimmig/api-types"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.15.0",
+    "eslint-plugin-astro": "^3.2.1",
+    "globals": "^17.14.0",
+    "typescript-eslint": "^8.73.0"
+  }
+}

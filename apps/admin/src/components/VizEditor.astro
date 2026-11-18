@@ -1,0 +1,118 @@
+---
+/**
+ * Chart form with a live Vega-Lite preview. The spec must carry its data
+ * inline (`data.values`); the pipeline rejects specs that load remote data.
+ */
+interface Props {
+  title?: string;
+  description?: string;
+  spec?: unknown;
+  dataSources?: unknown;
+  submitLabel: string;
+  readonly?: boolean;
+}
+
+const today = new Date().toISOString().slice(0, 10);
+const EXAMPLE_SPEC = {
+  mark: 'bar',
+  data: { values: [{ jahr: '2022', wert: 0 }, { jahr: '2023', wert: 0 }, { jahr: '2024', wert: 0 }] },
+  encoding: {
+    x: { field: 'jahr', type: 'ordinal', title: 'Jahr' },
+    y: { field: 'wert', type: 'quantitative', title: 'Wert' },
+  },
+};
+const EXAMPLE_SOURCES = [
+  { publisher: 'Bundesamt für Statistik', title: 'Titel der Tabelle', url: 'https://www.bfs.admin.ch/…', dataset_id: 'px-x-…', accessed_at: today },
+];
+
+const { title = '', description = '', spec = EXAMPLE_SPEC, dataSources = EXAMPLE_SOURCES, submitLabel, readonly = false } =
+  Astro.props;
+const pretty = (value: unknown) => JSON.stringify(value, null, 2);
+---
+
+<div class="editor">
+  <div class="fields stack">
+    <div>
+      <label for="title">Titel</label>
+      <input id="title" name="title" value={title} required minlength="3" readonly={readonly} />
+    </div>
+    <div>
+      <label for="description">Beschreibung (neutral: was zeigt die Grafik?)</label>
+      <input id="description" name="description" value={description} required minlength="10" readonly={readonly} />
+    </div>
+    <div>
+      <label for="spec">Vega-Lite-Spezifikation mit Daten</label>
+      <textarea id="spec" name="spec" rows="16" spellcheck="false" readonly={readonly} data-spec-input>{pretty(spec)}</textarea>
+    </div>
+    <div>
+      <label for="data_sources">Datenquellen</label>
+      <textarea id="data_sources" name="data_sources" rows="8" spellcheck="false" readonly={readonly}>{pretty(dataSources)}</textarea>
+    </div>
+    {!readonly && <div class="actions"><button type="submit">{submitLabel}</button></div>}
+  </div>
+  <div class="preview">
+    <p class="muted small">Vorschau, wie auf der öffentlichen Seite</p>
+    <div class="card"><div data-preview class="chart"></div></div>
+    <p data-preview-error class="error" hidden></p>
+  </div>
+</div>
+
+<script>
+  import embed from 'vega-embed';
+
+  // Same neutral palette as the public site (docs/methodology.md, section 5).
+  const neutral = {
+    background: null,
+    range: { category: ['#4c6a8a', '#8a9bb0', '#2f4560', '#b7c2cf'] },
+    mark: { color: '#4c6a8a' },
+  };
+
+  const input = document.querySelector<HTMLTextAreaElement>('[data-spec-input]');
+  const target = document.querySelector<HTMLElement>('[data-preview]');
+  const error = document.querySelector<HTMLElement>('[data-preview-error]');
+  let timer: number | undefined;
+
+  async function render() {
+    if (!input || !target || !error) return;
+    try {
+      const spec = JSON.parse(input.value);
+      const css = getComputedStyle(document.documentElement);
+      const text = css.getPropertyValue('--text').trim();
+      const muted = css.getPropertyValue('--muted').trim();
+      const line = css.getPropertyValue('--line').trim();
+      await embed(
+        target,
+        {
+          width: 'container',
+          ...spec,
+          config: {
+            ...neutral,
+            axis: { labelColor: muted, titleColor: text, gridColor: line, domainColor: line, tickColor: line },
+            legend: { labelColor: muted, titleColor: text },
+            view: { stroke: line },
+            ...spec.config,
+          },
+        },
+        { actions: false, renderer: 'svg' },
+      );
+      error.hidden = true;
+    } catch (e) {
+      error.textContent = `Vorschau nicht möglich: ${e instanceof Error ? e.message : String(e)}`;
+      error.hidden = false;
+    }
+  }
+
+  input?.addEventListener('input', () => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(render, 400);
+  });
+  render();
+</script>
+
+<style>
+  .editor { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  @media (max-width: 860px) { .editor { grid-template-columns: 1fr; } }
+  .preview { position: sticky; top: 16px; }
+  .chart { width: 100%; min-height: 260px; }
+  .small { font-size: 0.85rem; margin: 0 0 6px; }
+</style>

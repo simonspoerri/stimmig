@@ -1,0 +1,85 @@
+---
+import type { PublicVote } from '@stimmig/api-types';
+import Chart from '../../components/Chart.astro';
+import Base from '../../layouts/Base.astro';
+import { getVote, NotFound } from '../../lib/api.ts';
+import { formatDate, t } from '../../lib/i18n.ts';
+
+let vote: PublicVote;
+try {
+  vote = await getVote(Astro.params.id!);
+} catch (error) {
+  if (error instanceof NotFound) return Astro.rewrite('/404/');
+  throw error;
+}
+const where = (s: PublicVote['facts'][number]['source']) => (s.locator ? `${s.document}, ${s.locator}` : s.document);
+---
+
+<Base title={vote.title}>
+  <p class="muted">
+    {t.voteOn} {formatDate(vote.date)} · {t.kinds[vote.kind]} · <a href={vote.official_url}>{t.officialInfo}</a>
+  </p>
+  <h1>{vote.title}</h1>
+
+  <h2>{t.factsTitle}</h2>
+  {vote.facts.length === 0 && <p class="muted">{t.factsEmpty}</p>}
+  {
+    vote.facts.map((fact) => (
+      <section class="claim" id={fact.id}>
+        <p class="who">
+          {t.sides[fact.side]} · {where(fact.source)}
+        </p>
+        <blockquote>
+          <a href={fact.source.url}>«{fact.quote}»</a>
+        </blockquote>
+        {fact.visualizations.map((viz) => (
+          <Chart viz={viz} />
+        ))}
+        {fact.not_visualized_reason && (
+          <p class="muted">
+            {t.notVisualized} {fact.not_visualized_reason}
+          </p>
+        )}
+      </section>
+    ))
+  }
+
+  {
+    vote.forecasts.length > 0 && (
+      <>
+        <h2>{t.estimatesTitle}</h2>
+        <p class="muted">{t.estimatesLead}</p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>{t.claim}</th>
+                <th>{t.estimateBy}</th>
+                <th>{t.side}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vote.forecasts.map((f) => (
+                <tr id={f.id}>
+                  <td>
+                    <a href={f.source.url}>«{f.quote}»</a>
+                  </td>
+                  <td>{f.estimate_by}</td>
+                  <td>{t.sides[f.side]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )
+  }
+</Base>
+
+<style>
+  .who { color: var(--muted); font-size: 0.9rem; margin: 0 0 6px; }
+  .claim { padding: 24px 0; border-bottom: 1px solid var(--line); }
+  blockquote { margin: 0 0 16px; padding: 12px 16px; background: var(--quote); border-left: 3px solid var(--accent); font-size: 1.05rem; }
+  blockquote a { color: inherit; text-decoration: none; }
+  .table-scroll { overflow-x: auto; }
+</style>

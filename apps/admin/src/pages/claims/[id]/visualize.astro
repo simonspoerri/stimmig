@@ -1,0 +1,36 @@
+---
+import type { ClaimOut, VisualizationOut } from '@stimmig/api-types';
+import VizEditor from '../../../components/VizEditor.astro';
+import Admin from '../../../layouts/Admin.astro';
+import { handlePost, json, text } from '../../../lib/forms.ts';
+import { SIDE_LABEL } from '../../../lib/labels.ts';
+
+const { pipeline } = Astro.locals;
+const claim = await pipeline.get<ClaimOut>(`/api/claims/${Astro.params.id}`);
+
+const { redirect, result } = await handlePost(Astro, async (form) => {
+  const viz = await pipeline.post<VisualizationOut>(`/api/claims/${claim.id}/visualizations`, {
+    title: text(form, 'title'),
+    description: text(form, 'description'),
+    spec: json(form, 'spec', 'Die Spezifikation'),
+    data_sources: json(form, 'data_sources', 'Die Datenquellen'),
+  });
+  return `/visualizations/${viz.id}?ok=saved`;
+});
+if (redirect) return redirect;
+---
+
+<Admin title="Neue Grafik">
+  <p class="muted"><a href={`/votes/${claim.vote_id}#claim-${claim.id}`}>Zurück zur Vorlage</a></p>
+  <h1>Neue Grafik</h1>
+  <p class="muted">{SIDE_LABEL[claim.side]}</p>
+  <blockquote>{claim.quote}</blockquote>
+  {result.error && <p class="error" role="alert">{result.error}</p>}
+  <form method="post" class="form">
+    <VizEditor submitLabel="Als Entwurf speichern" />
+  </form>
+</Admin>
+
+<style>
+  blockquote { margin-bottom: 20px; }
+</style>

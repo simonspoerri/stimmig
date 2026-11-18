@@ -1,0 +1,14 @@
+---
+import { Content } from '../content/methodik.md';
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Methodik" description="Nach welchen Regeln Stimmig Aussagen auswählt, klassifiziert und visualisiert.">
+  <article class="prose"><Content /></article>
+</Base>
+
+<style>
+  .prose :global(p), .prose :global(li) { max-width: 680px; }
+  .prose :global(code) { background: var(--quote); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+  .prose :global(table) { margin: 12px 0; }
+</style>

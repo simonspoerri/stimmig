@@ -1,0 +1,11 @@
+---
+import Base from '../layouts/Base.astro';
+import { t } from '../lib/i18n.ts';
+Astro.response.status = 404;
+---
+
+<Base title={t.notFoundTitle}>
+  <h1>{t.notFoundTitle}</h1>
+  <p class="muted">{t.notFound}</p>
+  <p><a href="/">{t.navVotes}</a></p>
+</Base>

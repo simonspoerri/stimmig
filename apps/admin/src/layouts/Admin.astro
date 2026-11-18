@@ -1,0 +1,135 @@
+---
+import { ROLE_LABEL } from '../lib/labels.ts';
+
+interface Props {
+  title: string;
+  notice?: string | undefined;
+}
+
+const { title, notice } = Astro.props;
+const session = Astro.locals.session;
+const isAdmin = session?.roles.includes('admin');
+const path = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="de-CH">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} · Stimmig Admin</title>
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap bar">
+        <a class="brand" href="/">Stimmig <span>Admin</span></a>
+        <nav>
+          <a href="/" aria-current={path === '/' || path.startsWith('/votes') ? 'page' : undefined}>Vorlagen</a>
+          {isAdmin && <a href="/users" aria-current={path === '/users' ? 'page' : undefined}>Benutzer</a>}
+        </nav>
+        {
+          session && (
+            <div class="who">
+              <span class="name">{session.name}</span>
+              <span class="roles">{session.roles.map((r) => ROLE_LABEL[r] ?? r).join(', ') || 'keine Rolle'}</span>
+              <form method="post" action="/auth/logout">
+                <button class="link" type="submit">Abmelden</button>
+              </form>
+            </div>
+          )
+        }
+      </div>
+    </header>
+    <main class="wrap">
+      {notice && <p class="notice" role="status">{notice}</p>}
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --text: #1d232b;
+    --muted: #5b6573;
+    --line: #dedad3;
+    --accent: #1f3a5f;
+    --accent-soft: #e6ecf4;
+    --ok: #1f6b45;
+    --ok-soft: #e3f1e9;
+    --warn: #7a5a00;
+    --warn-soft: #f7efd7;
+    --error: #8a1c1c;
+    --error-soft: #f8e3e3;
+    --quote: #f2efe9;
+    color-scheme: light dark;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171b;
+      --surface: #1b1f24;
+      --text: #e6e3de;
+      --muted: #9aa3ae;
+      --line: #2d333b;
+      --accent: #9db8dc;
+      --accent-soft: #233041;
+      --ok: #8fd3ae;
+      --ok-soft: #1c3127;
+      --warn: #e5c76b;
+      --warn-soft: #332b14;
+      --error: #f0a0a0;
+      --error-soft: #3a1f1f;
+      --quote: #222831;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  .top { background: var(--surface); border-bottom: 1px solid var(--line); }
+  .bar { display: flex; align-items: center; gap: 24px; min-height: 56px; flex-wrap: wrap; }
+  .brand { font-weight: 700; text-decoration: none; color: var(--text); }
+  .brand span { color: var(--muted); font-weight: 500; }
+  nav { display: flex; gap: 16px; flex: 1; }
+  nav a { text-decoration: none; color: var(--muted); padding: 4px 0; border-bottom: 2px solid transparent; }
+  nav a[aria-current='page'] { color: var(--text); border-color: var(--accent); }
+  .who { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+  .who .roles { color: var(--muted); }
+  main { padding: 28px 16px 64px; }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 6px; }
+  h2 { font-size: 1.15rem; margin: 32px 0 12px; }
+  h3 { font-size: 1rem; margin: 0 0 8px; }
+  .muted { color: var(--muted); }
+  .notice { background: var(--ok-soft); color: var(--ok); padding: 10px 14px; border-radius: 8px; margin: 0 0 20px; }
+  .error { background: var(--error-soft); color: var(--error); padding: 10px 14px; border-radius: 8px; margin: 12px 0; }
+  .error ul { margin: 6px 0 0; padding-left: 20px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .stack > * + * { margin-top: 12px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+  input, select, textarea { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: var(--text); }
+  textarea { min-height: 120px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; }
+  textarea.prose { font-family: inherit; font-size: inherit; }
+  button { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent);
+    background: var(--accent); color: var(--surface); cursor: pointer; }
+  button.secondary { background: transparent; color: var(--accent); }
+  button.danger { background: transparent; color: var(--error); border-color: var(--error); }
+  button.link { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 500; text-decoration: underline; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+  .badge.approved, .badge.published { background: var(--ok-soft); color: var(--ok); }
+  .badge.draft, .badge.in_review { background: var(--warn-soft); color: var(--warn); }
+  .badge.rejected { background: var(--error-soft); color: var(--error); }
+  table { border-collapse: collapse; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+  blockquote { margin: 0; padding: 10px 14px; background: var(--quote); border-left: 3px solid var(--accent); }
+  details > summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  .table-scroll { overflow-x: auto; }
+</style>

@@ -1,0 +1,7 @@
+[extend]
+useDefault = true
+
+# Development-only defaults, documented as such; production refuses to start without real values.
+[allowlist]
+description = "development defaults"
+regexes = ['''ZGV2LW9ubHktc2Vzc2lvbi1zZWNyZXQtMzItYnl0ZXMh''', '''dev-admin-secret''', '''test-secret''']
