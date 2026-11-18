@@ -1,5 +1,5 @@
 {
-  "key": "cd746630d403ef542d6b0ee5",
+  "request_hash": "cd746630d403ef542d6b0ee5",
   "model": "claude-sonnet-5-5",
   "tool": "report_claims",
   "provenance": "Hand-written fixture for the synthetic dataset, not a model run. Tests the harness only.",

@@ -85,7 +85,7 @@ class RecordingProvider:
         response = self.inner.call_tool(request)
         self.directory.mkdir(parents=True, exist_ok=True)
         recording = {
-            "key": request.key(),
+            "request_hash": request.key(),
             "model": request.model,
             "tool": request.tool.name,
             "provenance": f"recorded from {request.model} on {datetime.now(UTC).date().isoformat()}",
